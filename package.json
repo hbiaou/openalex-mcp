@@ -1,0 +1,27 @@
+{
+  "name": "openalex-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for OpenAlex API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "mocha tests"
+  },
+  "keywords": [
+    "mcp",
+    "openalex"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "newrelic": "^12.18.0"
+  },
+  "devDependencies": {
+    "mocha": "^11.1.0",
+    "nock": "^14.0.3",
+    "supertest": "^7.1.0"
+  }
+}
