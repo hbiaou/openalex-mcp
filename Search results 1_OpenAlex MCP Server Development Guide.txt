@@ -1,0 +1,154 @@
+Below is a detailed, step‑by‑step plan for creating an MCP server that queries the OpenAlex API, along with the exact prompts you can feed to your RooCode agent at each stage.
+
+1. **Understand MCP and OpenAlex**  
+   The Model Context Protocol (MCP) is an open standard that lets LLMs call external “tools” and fetch “resources” in a uniform way—think of it as a USB‑C port for AI models citeturn0search5. OpenAlex is a free, no‑authentication REST API for scholarly metadata (works, authors, institutions, etc.), with up to 100 000 requests/day and support for search, filters, pagination, and more citeturn0search3.
+
+2. **Gather Documentation**  
+   - MCP TypeScript SDK (v1.10.0, released Apr 17, 2025) provides `McpServer`, `StreamableHTTPServerTransport`, zod‑based schemas, and examples of tools and resources citeturn6view0.  
+   - OpenAlex API docs outline endpoints like `/works`, `/authors`, filter syntax, pagination, and polite usage (include `mailto` query param) citeturn0search3.  
+   
+   **RooCode Prompt**  
+   > “Fetch and summarize the MCP TypeScript SDK README (v1.10.0) and the OpenAlex API Overview. List key imports, transport setup, and the base URL plus query parameters for `/works`.”
+
+3. **Set Up Your Environment**  
+   - Install Node.js ≥18 and npm  
+   - Install RooCode and ensure you can invoke `npx @modelcontextprotocol/...`  
+   - Create a directory for your project  
+   
+   ```bash
+   mkdir openalex-mcp
+   cd openalex-mcp
+   npm init -y
+   ```  
+   citeturn2view0 citeturn6view0  
+   
+   **RooCode Prompt**  
+   > “Initialize a new Node.js project in `openalex-mcp`, create `package.json`, and install dependencies: `npm install @modelcontextprotocol/sdk axios zod`. Show the exact commands and a brief rationale.”
+
+4. **Install Dependencies**  
+   ```bash
+   npm install @modelcontextprotocol/sdk      # MCP server framework
+   npm install axios                          # for HTTP requests
+   npm install zod                            # for parameter schemas
+   npm install --save-dev typescript @types/node
+   npx tsc --init                             # generate tsconfig.json
+   ```  
+   citeturn6view0 citeturn2view0  
+   
+   **RooCode Prompt**  
+   > “Write the full `npm install` commands for the MCP server dependencies and initialize TypeScript (`tsconfig.json`) with `esnext` modules and `commonjs` target.”
+
+5. **Scaffold the MCP Server**  
+   Create `src/server.ts` with the boilerplate:  
+   ```ts
+   import express from "express";
+   import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+   import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+   import { z } from "zod";
+
+   const app = express();
+   app.use(express.json());
+
+   // 1. Initialize the MCP server
+   const server = new McpServer({
+     name: "openalex",
+     version: "1.0.0"
+   });
+
+   // 2. Mount the MCP endpoint
+   app.all("/mcp", async (req, res) => {
+     const transport = new StreamableHTTPServerTransport({ req, res });
+     await server.connect(transport);
+     await transport.handleRequest(req, res);
+   });
+
+   // 3. Start listening
+   const PORT = process.env.PORT ?? 3000;
+   app.listen(PORT, () => {
+     console.log(`OpenAlex MCP server listening on http://localhost:${PORT}/mcp`);
+   });
+   ```  
+   citeturn6view0 citeturn2view0  
+   
+   **RooCode Prompt**  
+   > “Generate `src/server.ts` that spins up an Express app, mounts an MCP endpoint at `/mcp` using `StreamableHTTPServerTransport`, and starts listening on port 3000.”
+
+6. **Implement the OpenAlex Search Tool**  
+   In `src/server.ts`, add before the `app.all` block:  
+   ```ts
+   import axios from "axios";
+
+   // Define a tool that searches works by a free‑text query
+   server.tool(
+     "search-openalex",
+     { query: z.string() },
+     async ({ query }) => {
+       const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per_page=5&mailto=your.email@example.com`;
+       const resp = await axios.get(url);
+       const results = resp.data.results || [];
+
+       // Format up to 5 results
+       const summaries = results.slice(0, 5).map((w: any) =>
+         `• ${w.display_name} — ${w.authorships?.map((a: any) => a.author.display_name).join(", ")} (${w.publication_year})\n  DOI: ${w.doi ?? "N/A"}`
+       );
+       return { content: [{ type: "text", text: summaries.join("\n\n") }] };
+     }
+   );
+   ```  
+   citeturn6view0 citeturn0search3  
+   
+   **RooCode Prompt**  
+   > “Add a tool named `search-openalex` with schema `{ query: z.string() }`. Use `axios` to call the OpenAlex `/works` endpoint (limit to 5), and return a text list of title, authors, year, and DOI.”
+
+7. **Compile and Run the Server**  
+   Add to your `package.json`:
+   ```jsonc
+   "scripts": {
+     "build": "tsc",
+     "start": "node build/server.js"
+   }
+   ```
+   Then:
+   ```bash
+   npm run build
+   npm start
+   ```  
+   citeturn6view0 citeturn2view0  
+   
+   **RooCode Prompt**  
+   > “Generate `package.json` scripts for `build` and `start`, and show the CLI commands to compile TypeScript and launch `build/server.js`.”
+
+8. **Test Your MCP Server**  
+   You can use the MCP Inspector CLI or write a simple Node.js client. Example with MCP Inspector:
+   ```bash
+   npx mcp-inspector http://localhost:3000/mcp --list-tools
+   npx mcp-inspector http://localhost:3000/mcp --call-tool search-openalex --args '{"query":"climate change"}'
+   ```  
+   citeturn6view0 citeturn6view0  
+   
+   **RooCode Prompt**  
+   > “Provide example commands using `mcp-inspector` to list tools and invoke `search-openalex` with query ‘climate change’.”
+
+9. **(Optional) Containerize with Docker**  
+   Create `Dockerfile`:
+   ```dockerfile
+   FROM node:18-alpine
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm ci
+   COPY . .
+   RUN npm run build
+   EXPOSE 3000
+   CMD ["node", "build/server.js"]
+   ```  
+   Build and run:
+   ```bash
+   docker build -t openalex-mcp .
+   docker run -p 3000:3000 openalex-mcp
+   ```  
+   citeturn2view0 citeturn6view0  
+   
+   **RooCode Prompt**  
+   > “Generate a Dockerfile that uses Node 18, installs dependencies, builds the TypeScript code, and runs the MCP server on port 3000.”
+
+---
