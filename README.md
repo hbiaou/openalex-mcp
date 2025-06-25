@@ -6,6 +6,8 @@ Node.js MCP server using Express and Axios to proxy queries to the OpenAlex API.
 
 **License:** MIT License
 
+[![Certified by MCP Review](https://img.shields.io/badge/MCP%20Review-Certified-blue)](https://mcpreview.com/mcp-servers/hbiaou/openalex-mcp)
+
 ## Prerequisites
 - Node.js (>=14)
 - npm
@@ -20,6 +22,8 @@ Create a `.env` file in the project root with the following content:
 ```
 PORT=3000
 OPENALEX_BASE_URL=https://api.openalex.org
+MAILTO=your-email@example.com
+NEW_RELIC_LICENSE_KEY=your_new_relic_license_key_here
 ```
 
 ## Running the Server
