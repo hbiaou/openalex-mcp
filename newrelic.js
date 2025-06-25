@@ -2,7 +2,7 @@
 
 exports.config = {
   app_name: ['OpenAlex MCP Server'],
-***REMOVED***
+  license_key: process.env.NEW_RELIC_LICENSE_KEY,
   logging: {
     level: 'info'
   },

@@ -1,2 +1,6 @@
 BUILD_PLAN.md
 .env
+
+newrelic_agent.log
+*.log
+node_modules
